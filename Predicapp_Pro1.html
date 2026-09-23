@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consola de Predicación Pro - Smart Engine</title>
+  
+  <!-- LIBRERÍA PARA PROCESAR ARCHIVOS PDF EN EL NAVEGADOR -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-sidebar: #020617;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --verse-bg: #090d16;
+      --danger: #f87171;
+      --danger-hover: #dc2626;
+      --success: #22c55e;
+      --font-scale: 1rem;
+      
+      --timer-normal: #38bdf8;
+      --timer-warning: #facc15;
+      --timer-danger: #f87171;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      display: flex;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      font-size: var(--font-scale);
+      position: relative;
+    }
+
+    /* MENÚ LATERAL RESPONSIVO */
+    aside {
+      width: 320px;
+      max-width: 85vw;
+      background-color: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      padding: 1.25rem;
+      gap: 0.85rem;
+      z-index: 30;
+      transition: transform 0.3s ease, margin-left 0.3s ease;
+      height: 100%;
+      flex-shrink: 0;
+    }
+
+    body.pulpit-mode aside { margin-left: -320px; }
+
+    .brand-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .close-sidebar-btn {
+      display: none;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .nav-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      overflow-y: auto;
+      max-height: 180px;
+    }
+
+    .nav-item {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      text-align: left;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      background-color: var(--bg-card);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .file-upload-btn {
+      background-color: var(--accent);
+      color: #000;
+      font-weight: 600;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.2s;
+      display: block;
+    }
+
+    .file-upload-btn:hover { background-color: var(--accent-hover); color: #fff; }
+    #fileInput { display: none; }
+
+    .sidebar-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .actions-row {
+      display: flex;
+      gap: 0.4rem;
+    }
+
+    .btn-secondary {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn-danger {
+      flex: 1;
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      padding: 0.5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .btn-danger:hover {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    /* HISTORIAL DE CITAS BÍBLICAS */
+    .saved-verses-panel {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      flex: 1;
+      min-height: 100px;
+      overflow: hidden;
+    }
+
+    .saved-verses-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .saved-verses-header h4 { font-size: 0.85rem; color: var(--accent); text-transform: uppercase; }
+
+    .saved-verses-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .verse-history-item {
+      background: var(--bg-sidebar);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0.4rem 0.6rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .verse-history-item:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* NOTAS RÁPIDAS */
+    .quick-notes-panel {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .quick-notes-panel h4 { font-size: 0.85rem; color: var(--accent); text-transform: uppercase; }
+
+    .quick-notes-panel textarea {
+      width: 100%;
+      height: 65px;
+      background: var(--bg-sidebar);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: 6px;
+      padding: 0.5rem;
+      font-family: inherit;
+      font-size: 0.85rem;
+      resize: none;
+    }
+
+    /* ÁREA PRINCIPAL */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    header {
+      background-color: var(--bg-sidebar);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.75rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .menu-toggle-btn {
+      display: none;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.4rem 0.7rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .bible-search-container { 
+      display: flex; 
+      gap: 0.4rem; 
+      align-items: center; 
+      flex-wrap: wrap;
+    }
+
+    .bible-input {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.4rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .bible-input-book { width: 140px; }
+    .bible-input-num { width: 50px; text-align: center; }
+
+    .timer-container { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+
+    .timer-display {
+      font-size: 1.4rem;
+      font-weight: 700;
+      font-family: monospace;
+      color: var(--timer-normal);
+      background: var(--bg-card);
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+
+    .timer-display.warning { color: var(--timer-warning); }
+    .timer-display.danger { color: var(--timer-danger); animation: blink 1s infinite; }
+
+    @keyframes blink { 50% { opacity: 0.5; } }
+
+    .limit-input {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.3rem;
+      width: 50px;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .controls-group { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+
+    .icon-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.4rem 0.7rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+
+    .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .icon-btn.active { background: var(--accent); color: #000; }
+    .icon-btn.wake-active { background: var(--success); color: #000; border-color: var(--success); }
+
+    .content-area {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+    }
+
+    .sermon-header {
+      margin-bottom: 1.5rem;
+      border-bottom: 2px solid var(--border-color);
+      padding-bottom: 1rem;
+    }
+
+    .sermon-header h1 { font-size: 1.8rem; color: var(--accent); margin-bottom: 0.5rem; word-break: break-word; }
+    .sermon-header p { color: var(--text-muted); font-size: 1rem; }
+
+    .section-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+
+    .section-card.active-card { border-color: var(--accent); }
+    .section-card h2 { font-size: 1.3rem; color: var(--accent); margin-bottom: 0.75rem; word-break: break-word; }
+
+    .verse-box {
+      background-color: var(--verse-bg);
+      border-left: 4px solid var(--accent);
+      padding: 0.85rem 1rem;
+      margin: 1rem 0;
+      border-radius: 0 8px 8px 0;
+      font-style: italic;
+      color: #e2e8f0;
+      font-size: 1em;
+      word-break: break-word;
+    }
+
+    .points-list {
+      margin-left: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      font-size: 1em;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-right: 0.4rem;
+    }
+    .badge-tema { background: #0284c7; color: #fff; }
+    .badge-ilustracion { background: #8b5cf6; color: #fff; }
+    .badge-cita { background: #059669; color: #fff; }
+    .badge-aplicacion { background: #d97706; color: #fff; }
+    .badge-llamado { background: #dc2626; color: #fff; }
+
+    /* MODAL CON EMBED DE BIBLIA */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      padding: 0.75rem;
+    }
+
+    .modal-content {
+      background: var(--bg-card);
+      width: 100%;
+      max-width: 800px;
+      height: 85vh;
+      border-radius: 12px;
+      padding: 1rem;
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .bible-iframe {
+      width: 100%;
+      flex: 1;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .guide-code {
+      background: var(--bg-sidebar);
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: #38bdf8;
+      white-space: pre-wrap;
+      overflow-x: auto;
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 25;
+    }
+
+    @media (max-width: 1024px) {
+      header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .bible-search-container, .timer-container, .controls-group {
+        justify-content: space-between;
+      }
+    }
+
+    @media (max-width: 768px) {
+      aside {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        transform: translateX(-100%);
+      }
+
+      aside.sidebar-open {
+        transform: translateX(0);
+      }
+
+      body.pulpit-mode aside {
+        transform: translateX(-100%);
+      }
+
+      .menu-toggle-btn, .close-sidebar-btn {
+        display: inline-block;
+      }
+
+      .sidebar-overlay.active {
+        display: block;
+      }
+
+      .content-area {
+        padding: 1rem;
+      }
+
+      .sermon-header h1 {
+        font-size: 1.5rem;
+      }
+
+      .bible-input-book {
+        flex: 1;
+        min-width: 120px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- OVERLAY PARA MÓVILES -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileSidebar()"></div>
+
+  <!-- MENÚ LATERAL -->
+  <aside id="sidebar">
+    <div class="brand-title">
+      <span>📖 PredicApp Pro</span>
+      <button class="close-sidebar-btn" onclick="toggleMobileSidebar()">✖</button>
+    </div>
+    
+    <label for="fileInput" class="file-upload-btn">📁 Cargar PDF, TXT o MD</label>
+    <input type="file" id="fileInput" accept=".pdf,.txt,.md" onchange="handleFileUpload(event)">
+
+    <!-- BOTONES DE GESTIÓN (GUARDAR/DRIVE/COMANDOS) -->
+    <div class="sidebar-actions">
+      <div class="actions-row">
+        <button class="btn-secondary" onclick="exportSermon()">💾 Guardar</button>
+        <button class="btn-secondary" onclick="openDrivePicker()">☁️ Drive</button>
+      </div>
+      <div class="actions-row">
+        <button class="btn-secondary" onclick="openFormatGuideModal()">📜 Comandos</button>
+        <button class="btn-danger" onclick="clearAllData()">🗑️ Borrar</button>
+      </div>
+      <input type="file" id="driveFileInput" accept=".json,.pdf,.txt,.md" style="display: none;" onchange="handleDriveFileSelect(event)">
+    </div>
+
+    <!-- SECCIONES DEL SERMÓN -->
+    <nav class="nav-menu" id="sideNav"></nav>
+
+    <!-- HISTORIAL DE CITAS RECIENTES Y GUARDADAS -->
+    <div class="saved-verses-panel">
+      <div class="saved-verses-header">
+        <h4>📌 Citas Consultadas</h4>
+        <button class="btn-secondary" style="padding: 0.1rem 0.4rem; font-size: 0.7rem;" onclick="clearVerseHistory()">Limpiar</button>
+      </div>
+      <div class="saved-verses-list" id="verseHistoryList">
+        <span style="color: var(--text-muted); font-size: 0.8rem;">No hay citas recientes.</span>
+      </div>
+    </div>
+
+    <div class="quick-notes-panel">
+      <h4>📌 Notas Rápidas / Recordatorios</h4>
+      <textarea id="quickNotes" placeholder="Avisos, nombres o notas al vuelo..." oninput="saveQuickNotes()"></textarea>
+    </div>
+  </aside>
+
+  <!-- ÁREA PRINCIPAL -->
+  <main>
+    <header>
+      <div style="display: flex; gap: 0.5rem; align-items: center; width: 100%;">
+        <button class="menu-toggle-btn" onclick="toggleMobileSidebar()">☰ Menú</button>
+
+        <!-- BUSCADOR BÍBLICO DE ALTA PRECISION -->
+        <div class="bible-search-container" style="flex: 1;">
+          <input type="text" id="bibleBook" class="bible-input bible-input-book" list="bibleBooksList" placeholder="Libro (ej. Apocalipsis)" oninput="onBookInputChange()">
+          <datalist id="bibleBooksList"></datalist>
+
+          <span style="color: var(--text-muted)">Cap:</span>
+          <input type="number" id="bibleChapter" class="bible-input bible-input-num" min="1" value="2">
+
+          <span style="color: var(--text-muted)">Ver:</span>
+          <input type="number" id="bibleVerse" class="bible-input bible-input-num" min="1" value="16">
+
+          <button class="icon-btn" onclick="openBibleWidget()">🔍 Buscar</button>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 0.25rem;">
+        <div class="timer-container">
+          <span class="timer-display" id="timerDisplay">00:00</span>
+          <div class="controls-group">
+            <button class="icon-btn" onclick="toggleTimer()" id="timerBtn">▶️</button>
+            <button class="icon-btn" onclick="resetTimer()">🔄</button>
+            <span style="font-size: 0.8rem; color: var(--text-muted)">Límite:</span>
+            <input type="number" id="timeLimit" class="limit-input" value="45" onchange="updateTimerDisplay()">
+          </div>
+        </div>
+
+        <div class="controls-group">
+          <button class="icon-btn" id="wakeLockBtn" onclick="toggleWakeLock()">💡 Pantalla ON</button>
+          <button class="icon-btn" id="pulpitBtn" onclick="togglePulpitMode()">👁️ Púlpito</button>
+          <button class="icon-btn" id="autoScrollBtn" onclick="toggleAutoScroll()">📜 Scroll</button>
+          <button class="icon-btn" onclick="adjustFontSize(-0.1)">A-</button>
+          <button class="icon-btn" onclick="adjustFontSize(0.1)">A+</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="content-area" id="contentArea"></div>
+  </main>
+
+  <!-- MODAL EMBED BIBLEGATEWAY -->
+  <div class="modal" id="bibleModal">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 id="modalVerseRef" style="color: var(--accent); font-size: 1rem;">Buscador Bíblico (RVR1960)</h3>
+        <button class="icon-btn" onclick="closeBibleModal()">✖ Cerrar</button>
+      </div>
+
+      <iframe id="bibleIframe" class="bible-iframe" src="about:blank"></iframe>
+
+      <div style="display: flex; gap: 0.5rem; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Copia el pasaje deseado del lector y presiona "Insertar".</small>
+        <button class="icon-btn active" onclick="insertManualVerse()">+ Insertar Cita</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL GUÍA DE FORMATO -->
+  <div class="modal" id="formatGuideModal">
+    <div class="modal-content" style="height: auto; max-height: 85vh;">
+      <h3 style="color: var(--accent); font-size: 1.1rem;">📜 Comandos y Sintaxis para tus Archivos</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted);">
+        Para que el motor inteligente detecte correctamente las secciones, pasajes y etiquetas en archivos <code>.txt</code>, <code>.md</code> o <code>.pdf</code>, usa esta lista de comandos:
+      </p>
+
+      <div class="guide-code">
+1. TÍTULO PRINCIPAL (Elige uno):
+   # Título del Sermón
+   TEMA: Nombre del Sermón
+   SERMÓN: Nombre del Sermón
+
+2. SUBTÍTULO O CITA LEMA:
+   "Texto entre comillas al inicio del archivo"
+   > Texto con mayor que al inicio del archivo
+
+3. NUEVOS BLOQUES / SECCIONES (Elige uno):
+   ## Nombre del Bloque
+   1. Primer Punto
+   INTRODUCCIÓN / CONCLUSIÓN / APLICACIÓN
+
+4. INSIGNIAS / BADGES DISPONIBLES:
+   [Tema] Texto...        -> Badge azul
+   [Ilustración] Texto... -> Badge morado
+   [Cita] Texto...        -> Badge verde
+   [Aplicación] Texto...  -> Badge naranja
+   [Llamado] Texto...     -> Badge rojo
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 0.5rem;">
+        <button class="icon-btn active" onclick="closeFormatGuideModal()">¡Entendido!</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const defaultSermon = {
+      title: "Mensaje Principal",
+      subtitle: "Consola lista para tu predicación",
+      sections: [
+        {
+          id: "sec-0",
+          title: "Inicio y Bienvenida",
+          verse: "Carga tu archivo de sermón o busca citas bíblicas directamente en la barra superior.",
+          points: [
+            "Usa el buscador bíblico para consultar e insertar versículos en vivo.",
+            "El motor procesará inteligentemente PDFs para estructurar títulos y viñetas.",
+            "Usa las flechas del teclado (← / →) para avanzar o retroceder puntos."
+          ]
+        }
+      ]
+    };
+
+    let sermonData = JSON.parse(JSON.stringify(defaultSermon));
+    let verseHistory = [];
+    let timerInterval = null;
+    let autoScrollInterval = null;
+    let wakeLock = null;
+    let isWakeLockRequested = false;
+    let secondsElapsed = 0;
+    let currentFontScale = 1.0;
+    let currentSectionIdx = 0;
+    let currentSearchRef = "";
+
+    const BIBLE_BOOKS_CATALOG = [
+      "Génesis", "Éxodo", "Levítico", "Números", "Deuteronomio", "Josué", "Jueces", "Rut",
+      "1 Samuel", "2 Samuel", "1 Reyes", "2 Reyes", "1 Crónicas", "2 Crónicas", "Esdras",
+      "Nehemías", "Ester", "Job", "Salmos", "Proverbios", "Eclesiastés", "Cantares",
+      "Isaías", "Jeremías", "Lamentaciones", "Ezequiel", "Daniel", "Oseas", "Joel",
+      "Amós", "Abdías", "Jonás", "Miqueas", "Nahúm", "Habacuc", "Sofonías", "Hageo",
+      "Zacarías", "Malaquías", "Mateo", "Marcos", "Lucas", "Juan", "Hechos", "Romanos",
+      "1 Corintios", "2 Corintios", "Gálatas", "Efesios", "Filipenses", "Colosenses",
+      "1 Tesalonicenses", "2 Tesalonicenses", "1 Timoteo", "2 Timoteo", "Tito", "Filemón",
+      "Hebreos", "Santiago", "1 Pedro", "2 Pedro", "1 Juan", "2 Juan", "3 Juan", "Judas", "Apocalipsis"
+    ];
+
+    window.onload = function() {
+      const savedSermon = localStorage.getItem('sermonData_pro');
+      if (savedSermon) {
+        try { sermonData = JSON.parse(savedSermon); } catch(e) { console.error(e); }
+      }
+      
+      const savedNotes = localStorage.getItem('quickNotes_pro');
+      if (savedNotes) {
+        document.getElementById('quickNotes').value = savedNotes;
+      }
+
+      const savedHistory = localStorage.getItem('verseHistory_pro');
+      if (savedHistory) {
+        try { verseHistory = JSON.parse(savedHistory); } catch(e) {}
+      }
+
+      populateBooksDatalist();
+      renderSermon();
+      renderVerseHistory();
+      setupKeybindings();
+      setupVisibilityChangeForWakeLock();
+    };
+
+    function toggleMobileSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar.classList.toggle('sidebar-open');
+      overlay.classList.toggle('active');
+    }
+
+    function populateBooksDatalist() {
+      const datalist = document.getElementById('bibleBooksList');
+      datalist.innerHTML = '';
+      BIBLE_BOOKS_CATALOG.forEach(b => {
+        const option = document.createElement('option');
+        option.value = b;
+        datalist.appendChild(option);
+      });
+    }
+
+    function onBookInputChange() {
+      const val = document.getElementById('bibleBook').value.trim();
+      const match = BIBLE_BOOKS_CATALOG.find(b => b.toLowerCase() === val.toLowerCase());
+      if (match) {
+        document.getElementById('bibleChapter').focus();
+      }
+    }
+
+    /* MANTENER PANTALLA SIEMPRE ENCENDIDA (WAKE LOCK API) */
+    async function toggleWakeLock() {
+      const btn = document.getElementById('wakeLockBtn');
+      
+      if (!('wakeLock' in navigator)) {
+        alert("Tu navegador no soporta el bloqueo de suspensión automática. Intenta con Chrome, Safari o Edge.");
+        return;
+      }
+
+      if (wakeLock !== null) {
+        // Desactivar Bloqueo
+        try {
+          await wakeLock.release();
+          wakeLock = null;
+          isWakeLockRequested = false;
+          btn.classList.remove('wake-active');
+          btn.innerText = '💡 Pantalla ON';
+        } catch (err) {
+          console.error(err);
+        }
+      } else {
+        // Activar Bloqueo
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+          isWakeLockRequested = true;
+          btn.classList.add('wake-active');
+          btn.innerText = '💡 PANTALLA SIEMPRE ON';
+
+          wakeLock.addEventListener('release', () => {
+            if (!isWakeLockRequested) {
+              wakeLock = null;
+              btn.classList.remove('wake-active');
+              btn.innerText = '💡 Pantalla ON';
+            }
+          });
+        } catch (err) {
+          alert("No se pudo mantener la pantalla encendida: " + err.message);
+        }
+      }
+    }
+
+    // Re-activar pantalla encendida si el usuario minimiza y vuelve a la app
+    function setupVisibilityChangeForWakeLock() {
+      document.addEventListener('visibilitychange', async () => {
+        if (wakeLock !== null && document.visibilityState === 'visible' && isWakeLockRequested) {
+          try {
+            wakeLock = await navigator.wakeLock.request('screen');
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      });
+    }
+
+    /* FUNCIONES DE GUARDADO Y NUBE (GOOGLE DRIVE) */
+    function exportSermon() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sermonData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      const fileName = `${sermonData.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_sermon.json`;
+      
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", fileName);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function openDrivePicker() {
+      document.getElementById('driveFileInput').click();
+    }
+
+    function handleDriveFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const fileExt = file.name.split('.').pop().toLowerCase();
+
+      if (fileExt === 'json') {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          try {
+            const importedData = JSON.parse(e.target.result);
+            if (importedData.title && importedData.sections) {
+              sermonData = importedData;
+              saveAndRender();
+              alert("¡Sermón cargado con éxito!");
+            } else {
+              alert("El archivo JSON no tiene la estructura de un sermón válido.");
+            }
+          } catch (err) {
+            alert("Error al leer el archivo seleccionado.");
+          }
+        };
+        reader.readAsText(file);
+      } else {
+        handleFileUpload(event);
+      }
+    }
+
+    // ABRIR WIDGET BÍBLICO Y GUARDAR EN HISTORIAL
+    function openBibleWidget(customRef = null) {
+      if (customRef) {
+        currentSearchRef = customRef;
+      } else {
+        const bookInput = document.getElementById('bibleBook').value.trim();
+        const chapterInput = document.getElementById('bibleChapter').value.trim();
+        const verseInput = document.getElementById('bibleVerse').value.trim();
+
+        if (!bookInput) {
+          alert("Por favor selecciona o escribe un libro de la Biblia.");
+          return;
+        }
+
+        const chapter = parseInt(chapterInput) || 1;
+        const verse = parseInt(verseInput) || 1;
+        currentSearchRef = `${bookInput} ${chapter}:${verse}`;
+      }
+
+      document.getElementById('modalVerseRef').innerText = `Buscando: ${currentSearchRef} (RVR1960)`;
+
+      saveToVerseHistory(currentSearchRef);
+
+      const queryParam = encodeURIComponent(currentSearchRef);
+      const bgUrl = `https://www.biblegateway.com/passage/?search=${queryParam}&version=RVR1960`;
+      const iframe = document.getElementById('bibleIframe');
+      iframe.src = bgUrl;
+
+      document.getElementById('bibleModal').style.display = 'flex';
+    }
+
+    function saveToVerseHistory(ref) {
+      if (!verseHistory.includes(ref)) {
+        verseHistory.unshift(ref);
+        if (verseHistory.length > 15) verseHistory.pop();
+        localStorage.setItem('verseHistory_pro', JSON.stringify(verseHistory));
+        renderVerseHistory();
+      }
+    }
+
+    function renderVerseHistory() {
+      const container = document.getElementById('verseHistoryList');
+      container.innerHTML = '';
+
+      if (verseHistory.length === 0) {
+        container.innerHTML = '<span style="color: var(--text-muted); font-size: 0.8rem;">No hay citas recientes.</span>';
+        return;
+      }
+
+      verseHistory.forEach(ref => {
+        const item = document.createElement('div');
+        item.className = 'verse-history-item';
+        item.innerHTML = `<span>📖 ${ref}</span> <span>🔍</span>`;
+        item.onclick = () => {
+          if (window.innerWidth <= 768) toggleMobileSidebar();
+          openBibleWidget(ref);
+        };
+        container.appendChild(item);
+      });
+    }
+
+    function clearVerseHistory() {
+      verseHistory = [];
+      localStorage.removeItem('verseHistory_pro');
+      renderVerseHistory();
+    }
+
+    function closeBibleModal() {
+      document.getElementById('bibleModal').style.display = 'none';
+      document.getElementById('bibleIframe').src = 'about:blank';
+    }
+
+    function insertManualVerse() {
+      const textEntered = prompt(`Escribe o pega el texto para la cita (${currentSearchRef}):`);
+      if (!textEntered || !textEntered.trim()) return;
+
+      sermonData.sections.push({
+        id: `sec-verse-${Date.now()}`,
+        title: `Cita Bíblica: ${currentSearchRef}`,
+        verse: `${textEntered.trim()}`,
+        points: ["Pasaje agregado desde el Buscador Bíblico."]
+      });
+
+      saveAndRender();
+      closeBibleModal();
+      scrollToSection(sermonData.sections.length - 1);
+    }
+
+    async function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const fileType = file.name.split('.').pop().toLowerCase();
+      try {
+        if (fileType === 'pdf') {
+          const text = await extractTextFromPDF(file);
+          parseSermonTextSmart(text);
+          saveAndRender();
+        } else {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            parseSermonTextSmart(e.target.result);
+            saveAndRender();
+          };
+          reader.readAsText(file);
+        }
+      } catch (err) {
+        alert("Error al procesar el archivo. Revisa que el formato sea válido.");
+        console.error(err);
+      }
+    }
+
+    function saveAndRender() {
+      localStorage.setItem('sermonData_pro', JSON.stringify(sermonData));
+      renderSermon();
+    }
+
+    function clearAllData() {
+      if (confirm("¿Estás seguro de que deseas borrar toda la información adjuntada y restaurar la consola?")) {
+        localStorage.removeItem('sermonData_pro');
+        localStorage.removeItem('quickNotes_pro');
+        localStorage.removeItem('verseHistory_pro');
+        document.getElementById('quickNotes').value = '';
+        document.getElementById('fileInput').value = '';
+        sermonData = JSON.parse(JSON.stringify(defaultSermon));
+        verseHistory = [];
+        renderSermon();
+        renderVerseHistory();
+      }
+    }
+
+    function openFormatGuideModal() {
+      document.getElementById('formatGuideModal').style.display = 'flex';
+    }
+
+    function closeFormatGuideModal() {
+      document.getElementById('formatGuideModal').style.display = 'none';
+    }
+
+    async function extractTextFromPDF(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = "";
+
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => item.str).join(' ');
+        fullText += pageText + '\n';
+      }
+
+      return fullText;
+    }
+
+    function parseSermonTextSmart(text) {
+      const rawLines = text.split('\n');
+      let parsed = { title: "Predicación Importada", subtitle: "", sections: [] };
+      let currentSection = null;
+      let secIndex = 0;
+
+      rawLines.forEach((line) => {
+        let trimmed = line.trim();
+        if (!trimmed) return;
+
+        const isMainTitle = trimmed.startsWith('# ') || /^(TEMA|SERMÓN|MENSAJE|TITULO):/i.test(trimmed);
+        const isHeader = trimmed.startsWith('## ') || 
+                         /^(INTRODUCCIÓN|CONCLUSIÓN|APLICACIÓN|ILUSTRACIÓN|PUNTO|PASAJE)/i.test(trimmed) ||
+                         /^\d+[\.\)]\s+[A-ZÁÉÍÓÚ]/i.test(trimmed) ||
+                         (trimmed === trimmed.toUpperCase() && trimmed.length > 5 && trimmed.length < 50);
+
+        if (isMainTitle) {
+          parsed.title = trimmed.replace(/^#\s*|(TEMA|SERMÓN|MENSAJE|TITULO):\s*/i, '');
+        } else if (isHeader) {
+          if (currentSection) parsed.sections.push(currentSection);
+          secIndex++;
+          currentSection = {
+            id: `sec-${secIndex}`,
+            title: trimmed.replace(/^##\s*/, ''),
+            verse: "",
+            points: []
+          };
+        } else if (trimmed.startsWith('"') || trimmed.startsWith('>') || /^[0-9]?[A-Z][a-z]+\s+\d+:\d+/i.test(trimmed)) {
+          if (currentSection) {
+            currentSection.verse = trimmed.replace(/^[">]\s*/, '');
+          } else {
+            parsed.subtitle = trimmed;
+          }
+        } else {
+          if (!currentSection) {
+            secIndex++;
+            currentSection = { id: `sec-${secIndex}`, title: "Punto Inicial", verse: "", points: [] };
+          }
+
+          if (/^tema:/i.test(trimmed)) {
+            trimmed = "[Tema] " + trimmed.replace(/^tema:\s*/i, '');
+          }
+
+          if (trimmed.length > 120) {
+            const sentences = trimmed.match(/[^.!?]+[.!?]+/g) || [trimmed];
+            sentences.forEach(s => {
+              if (s.trim().length > 3) currentSection.points.push(s.trim());
+            });
+          } else {
+            currentSection.points.push(trimmed.replace(/^[-*•]\s*/, ''));
+          }
+        }
+      });
+
+      if (currentSection) parsed.sections.push(currentSection);
+      if (parsed.sections.length > 0) sermonData = parsed;
+    }
+
+    function saveQuickNotes() {
+      const val = document.getElementById('quickNotes').value;
+      localStorage.setItem('quickNotes_pro', val);
+    }
+
+    function formatPointText(text) {
+      let escapeHTML = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      escapeHTML = escapeHTML.replace(/^tema:\s*/i, '');
+
+      return escapeHTML
+        .replace(/\[Tema\]/gi, '<span class="badge badge-tema">Tema</span>')
+        .replace(/\[Ilustración\]/gi, '<span class="badge badge-ilustracion">Ilustración</span>')
+        .replace(/\[Cita\]/gi, '<span class="badge badge-cita">Cita</span>')
+        .replace(/\[Aplicación\]/gi, '<span class="badge badge-aplicacion">Aplicación</span>')
+        .replace(/\[Llamado\]/gi, '<span class="badge badge-llamado">Llamado</span>');
+    }
+
+    function renderSermon() {
+      const sideNav = document.getElementById('sideNav');
+      const contentArea = document.getElementById('contentArea');
+
+      sideNav.innerHTML = '';
+      contentArea.innerHTML = '';
+
+      contentArea.insertAdjacentHTML('beforeend', `
+        <div class="sermon-header">
+          <h1>${sermonData.title}</h1>
+          <p>${sermonData.subtitle || ''}</p>
+        </div>
+      `);
+
+      sermonData.sections.forEach((sec, idx) => {
+        const navBtn = document.createElement('button');
+        navBtn.className = `nav-item ${idx === 0 ? 'active' : ''}`;
+        navBtn.innerText = sec.title;
+        navBtn.onclick = () => {
+          if (window.innerWidth <= 768) toggleMobileSidebar();
+          scrollToSection(idx);
+        };
+        sideNav.appendChild(navBtn);
+
+        const pointsHTML = sec.points.map(pt => `<li>${formatPointText(pt)}</li>`).join('');
+        const verseHTML = sec.verse ? `<div class="verse-box">"${sec.verse}"</div>` : '';
+
+        contentArea.insertAdjacentHTML('beforeend', `
+          <div class="section-card ${idx === 0 ? 'active-card' : ''}" id="${sec.id}">
+            <h2>${sec.title}</h2>
+            ${verseHTML}
+            <ul class="points-list">${pointsHTML}</ul>
+          </div>
+        `);
+      });
+    }
+
+    function scrollToSection(index) {
+      if (index < 0 || index >= sermonData.sections.length) return;
+      currentSectionIdx = index;
+      const targetSec = sermonData.sections[index];
+      const target = document.getElementById(targetSec.id);
+      
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.section-card').forEach(c => c.classList.remove('active-card'));
+        
+        target.classList.add('active-card');
+        const navBtns = document.querySelectorAll('.nav-item');
+        if (navBtns[index]) navBtns[index].classList.add('active');
+      }
+    }
+
+    function toggleTimer() {
+      const btn = document.getElementById('timerBtn');
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        btn.innerText = '▶️';
+      } else {
+        timerInterval = setInterval(() => {
+          secondsElapsed++;
+          updateTimerDisplay();
+        }, 1000);
+        btn.innerText = '⏸️';
+      }
+    }
+
+    function updateTimerDisplay() {
+      const mins = Math.floor(secondsElapsed / 60);
+      const secs = secondsElapsed % 60;
+      const limit = parseInt(document.getElementById('timeLimit').value) || 45;
+      const display = document.getElementById('timerDisplay');
+      
+      display.innerText = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+      display.classList.remove('warning', 'danger');
+      if (mins >= limit) {
+        display.classList.add('danger');
+      } else if (mins >= limit - 5) {
+        display.classList.add('warning');
+      }
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      secondsElapsed = 0;
+      updateTimerDisplay();
+      document.getElementById('timerBtn').innerText = '▶️';
+    }
+
+    function togglePulpitMode() {
+      document.body.classList.toggle('pulpit-mode');
+      document.getElementById('pulpitBtn').classList.toggle('active');
+    }
+
+    function toggleAutoScroll() {
+      const btn = document.getElementById('autoScrollBtn');
+      const contentArea = document.getElementById('contentArea');
+
+      if (autoScrollInterval) {
+        clearInterval(autoScrollInterval);
+        autoScrollInterval = null;
+        btn.classList.remove('active');
+      } else {
+        autoScrollInterval = setInterval(() => {
+          contentArea.scrollTop += 1;
+        }, 40);
+        btn.classList.add('active');
+      }
+    }
+
+    function adjustFontSize(delta) {
+      currentFontScale = Math.max(0.8, Math.min(1.6, currentFontScale + delta));
+      document.documentElement.style.setProperty('--font-scale', `${currentFontScale}rem`);
+    }
+
+    function setupKeybindings() {
+      document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (e.key === 'ArrowRight' || e.key === ' ') {
+          if (currentSectionIdx < sermonData.sections.length - 1) scrollToSection(currentSectionIdx + 1);
+        } else if (e.key === 'ArrowLeft') {
+          if (currentSectionIdx > 0) scrollToSection(currentSectionIdx - 1);
+        }
+      });
+    }
+  </script>
+</body>
+</html>
